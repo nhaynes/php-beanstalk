@@ -583,10 +583,10 @@ void put_callback(bsc *svr, struct bsc_put_info *info)
     put_flag = true;
 }
 
-bool cmd_put(bsc *svr, char *value, int value_len)
+bool cmd_put(bsc *svr, char *value, int value_len, int priority, int delay, int ttr)
 {
-    bsc_error = bsc_put(svr, put_callback, NULL, BSC_DEFAULT_PRORITY, 
-					BSC_DEFAULT_DELAY, BSC_DEFAULT_TTR, value_len, value, false);
+    bsc_error = bsc_put(svr, put_callback, NULL, priority, 
+					delay, ttr, value_len, value, false);
 
     if (bsc_error != BSC_ERROR_NONE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "critical error: got unknown error (%d)\n", bsc_error);
@@ -604,7 +604,7 @@ bool cmd_put(bsc *svr, char *value, int value_len)
 	return true;
 }
 
-/* {{{ proto bool beanstalk_put(object beanstalk, string tube [, mixed var [, int flag [, int exptime ] ] ])
+/* {{{ proto bool beanstalk_put(object beanstalk, string tube [, mixed var [, int priority [, int delay [, int ttr [, int flag [, int exptime ] ] ])
    Sets the value of an item. Item may exist or not */
 PHP_FUNCTION(beanstalk_put)
 {
@@ -612,16 +612,19 @@ PHP_FUNCTION(beanstalk_put)
 	bsc * svr;
 	char *tube, *value;
 	int tube_len, value_len;
+        int priority = BSC_DEFAULT_PRORITY;
+        int delay = BSC_DEFAULT_DELAY;
+        int ttr = BSC_DEFAULT_TTR;
     zval *bsc_object = getThis();
     long flags = 0, exptime = 0;
 
     if (bsc_object == NULL) {
-        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Oss|ll", &bsc_object, beanstalk_pool_ce, &tube, &tube_len, &value, &value_len, &flags, &exptime) == FAILURE) {
+        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Oss|lllll", &bsc_object, beanstalk_pool_ce, &tube, &tube_len, &value, &value_len, &priority, &delay, &ttr, &flags, &exptime) == FAILURE) {
             return;
         }
     }
     else {
-        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|ll", &tube, &tube_len, &value, &value_len, &flags, &exptime) == FAILURE) {
+        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|lllll", &tube, &tube_len, &value, &value_len, &priority, &delay, &ttr, &flags, &exptime) == FAILURE) {
             return;
         }
     }
@@ -637,7 +640,7 @@ PHP_FUNCTION(beanstalk_put)
 		RETURN_FALSE;
 	}
 
-	if(cmd_put(svr, value, value_len) && g_put_info) {
+	if(cmd_put(svr, value, value_len, priority, delay, ttr) && g_put_info) {
 		if(BSC_PUT_RES_INSERTED == g_put_info->response.code) {
 			g_put_info = NULL;
 			put_flag = false;
@@ -831,7 +834,7 @@ PHP_FUNCTION(beanstalk_reserve)
     bsc * svr;
     char *tube, *value;
     int tube_len, value_len;
-	int timeout;
+	int timeout = BSC_DEFAULT_TIMEOUT;
     zval *bsc_object = getThis();
     long flags = 0, exptime = 0;
 
